@@ -1,7 +1,7 @@
 ## D3—Data Visualization approach and case study on the global surface temperature change
 
 ## data preparation
-The data was download from the following [link] (https://data.giss.nasa.gov/gistemp/) and processed with following [Rscript](https://github.com/leirhyh/ISQA8086_001_Assignment/blob/master/researchPaperdataPrepared.R).
+The data was download from the following [link](https://data.giss.nasa.gov/gistemp/) and processed with following [Rscript](https://github.com/leirhyh/ISQA8086_001_Assignment/blob/master/researchPaperdataPrepared.R).
 ## Case Study 1
 [Global surface seasonal means temperature anomalies(°C) from 1880 to 2016](https://github.com/leirhyh/ISQA8086_001_Assignment/tree/master/Seasonal). The source code and data stored in [link] (http://bl.ocks.org/asielen/44ffca2877d0132572cb).
 ## Case Study 2
