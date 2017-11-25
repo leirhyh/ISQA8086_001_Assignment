@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D3</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.css" rel="stylesheet">
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,700,500' rel='stylesheet' type='text/css'>
+    <link href="style-light.css" rel="stylesheet" type="text/css"/>
+    <script src="data.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.js"></script>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
+</head>
+<body>
+
+<div class="widget" style="width:768px">
+    <div class="header"> Global or Regional Annual Mean Temperature anomalies</div>
+    <div id="chart" class="chart-container" style="padding:5px">
+    </div>
+</div>
+
+<script type="text/javascript">
+    var createGradient=function(svg,color1,color2,id){
+        var defs = svg.append("defs");
+        var gradient=defs.append("linearGradient")
+                .attr("id", id)
+                .attr("x1", "0%")
+                .attr("y1", "100%")
+                .attr("x2", "0%")
+                .attr("y2", "0%")
+                .attr("spreadMethod", "pad");
+        gradient.append("svg:stop")
+                .attr("offset", "0%")
+                .attr("stop-color", color1)
+                .attr("stop-opacity", 1);
+        gradient.append("svg:stop")
+                .attr("offset", "100%")
+                .attr("stop-color", color2)
+                .attr("stop-opacity", 1);
+    };
+    //calculating mean
+    function getMean(dataPoint,count) {
+        var mean=[];
+        for (var i = 0, k = 0; i < data.length; i = i + count, k++) {
+            var total = 0;
+            for (var j = 0; j < count; ++j) {
+                if (data[i + j] != undefined && data[i + j]['dataPoint'] != "NA") {
+                    total += data[i + j][dataPoint];
+                } else {
+                }
+            }
+            if (data[i] != undefined && data[i][dataPoint] != "NA") {
+                if(i<130)
+                    mean[k] = {val: (total / count).toFixed(2), "Year": data[i+count/2].Year};
+                else {
+                    // This can be generalized even further
+                    mean[k] = {val: (total / (count/2)).toFixed(2), "Year": data[i+2].Year};
+                }
+            }
+        }
+        return mean;
+    }
+
+    //drawing lines
+    function plotLine(data,mean_data,className,cirClass,attr){
+        var line = d3.svg.line()
+                .interpolate("cardinal")
+                .x(function (d) {
+                    return x(d.Year);
+                })
+                .y(function (d) {
+                    return y(d.val);
+                });
+        svg.append('path')
+                .datum(mean_data)
+                .attr({
+                    class: className,
+                    d: line
+                });
+        var lineAllData = d3.svg.line()
+                .interpolate("cardinal")
+                .x(function (d) {
+                    return x(d.Year);
+                })
+                .y(function (d) {
+                    return y(d[attr]);
+                });
+        svg.append('path')
+                .datum(data)
+                .attr({
+                    class: className+"0",
+                    d: lineAllData
+                });
+         //Adding interactive functions such as mouse over or out
+        svg.selectAll(".dot")
+                .data(mean_data)
+                .enter().append("circle")
+                .attr("class", cirClass)
+                .attr("cy", function (d) { return y(d.val); } ) //set y
+                .attr("cx", function (d,i) { return x(d.Year); } ) //set x
+                .attr("r", 4)
+                .on("mouseover", function(d) {
+                    var div=d3.select('.'+className+'_tt');
+                    div.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                    div.html("<b>Year : </b>"+d.Year + "<br/>" +"<b>Temp : </b>" + d.val+" °C")
+                            .style("left", (d3.event.pageX) + "px")
+                            .style("top", (d3.event.pageY - 50) + "px");
+                    d3.select(event.target).attr("r", 7);
+                    d3.select('.line1').style("opacity", ".1");
+                    d3.select('.line2').style("opacity", ".1");
+                    d3.select('.line3').style("opacity", ".1");
+                    d3.select('.'+className).style("opacity", "1");
+                    d3.select('.'+className).style("stroke-width", "2px");
+                    d3.selectAll('.dot1').style("opacity", 0.1);
+                    d3.selectAll('.dot2').style("opacity", 0.1);
+                    d3.selectAll('.dot3').style("opacity", 0.1);
+                    d3.selectAll('.'+cirClass).style("opacity", 1);
+                    d3.select('.'+className+"0").style("opacity", 1);
+                    area_g.append('path')
+                            .datum(mean_data)
+                            .attr({
+                                class: className+'11',
+                                d: area,
+                                fill:'url(#'+className+'11)'
+                            })
+                            .style({
+                                opacity:.5
+                            });
+                })
+                .on("mouseout", function(d) {
+                    var div=d3.select('.'+className+'_tt');
+                    div.transition()
+                            .duration(200)
+                            .style("opacity", 0);
+                    $(event.target).attr("r", 4);
+                    d3.select('.line1').style("opacity", ".6");
+                    d3.select('.line2').style("opacity", ".6");
+                    d3.select('.line3').style("opacity", ".6");
+                    d3.select('.'+className).style("stroke-width", "1.5px");
+                    d3.selectAll('.dot1').style("opacity", 1);
+                    d3.selectAll('.dot2').style("opacity", 1);
+                    d3.selectAll('.dot3').style("opacity", 1);
+                    d3.select('.'+className+"0").style("opacity", 0);
+                    area_g.select('.'+className+'11').remove();
+                });
+    }
+    var count=10;
+    var Glob=getMean('Glob',count);
+    var NHem=getMean('NHem',count);
+    var SHem=getMean('SHem',count);
+    //Adding axis and tick
+    var margin = {top: 50, right: 35, bottom: 50, left: 50},
+            w = 768 - (margin.left + margin.right),
+            h = 500 - (margin.top + margin.bottom);
+    var x = d3.scale.linear()
+            .domain(d3.extent(data, function (d) {
+                return d.Year;
+            }))
+            .rangeRound([0, w]);
+    var y = d3.scale.linear()
+            .domain([-0.5,1.0])
+            .range([h, 0]);
+    var xAxis = d3.svg.axis()
+            .scale(x)
+            .orient('bottom')
+            .ticks(10);
+    var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient('left')
+            .ticks(10)
+            .tickFormat(function(d){
+                return d+"";
+            });
+    var xGrid = d3.svg.axis()
+            .scale(x)
+            .orient('bottom')
+            .ticks(5)
+            .tickSize(-h, 0, 0)
+            .tickFormat("");
+    var yGrid = d3.svg.axis()
+            .scale(y)
+            .orient('left')
+            .ticks(5)
+            .tickSize(-w, 0, 0)
+            .tickFormat("");
+    var svg = d3.select("#chart").append('svg')
+            .attr({
+                width: w + margin.left + margin.right,
+                height: h + margin.top + margin.bottom
+            })
+            .append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+    var area_g = svg
+            .append("g");
+    svg.append('g')
+            .attr({class: "x axis", transform: 'translate(0,' + h + ')'})
+            .call(xAxis)
+
+ // text label for the x axis
+    svg.append("text")
+    		.attr("transform", "translate(" + (w / 2) + " ," + (h + margin.bottom) + ")")
+    		.style("text-anchor", "middle")
+    		.text("Year");
+
+     svg.append('g')
+            .attr({
+                class: "y axis"
+            }).call(yAxis)
+
+  // text label for the y axis
+     svg.append("text")
+	         .attr("transform", "rotate(-90)")
+	         .attr("y", 0 - margin.left)
+	         .attr("x",0 - (h / 2))
+	         .attr("dy", "1em")
+	         .style("text-anchor", "middle")
+             .text("Temperature Anomalies °C");
+
+    svg.append('g')
+            .attr({
+                class: "grid",
+                transform: 'translate(0,' + h + ')'
+            })
+            .call(xGrid);
+    svg.append('g')
+            .attr({
+                class: "y-grid"
+            }).call(yGrid);
+var area = d3.svg.area()
+        .interpolate("cardinal")
+        .x(function (d) {
+            return x(d.Year);
+        })
+        .y0(h)
+        .y1(function (d) {
+            return y(d.val);
+        });
+    var div_line1 = d3.select("body").append("div")
+            .attr("class", "line1_tt")
+            .style("opacity", 0);
+    var div_line2 = d3.select("body").append("div")
+            .attr("class", "line2_tt")
+            .style("opacity", 0);
+    var div_line3 = d3.select("body").append("div")
+            .attr("class", "line3_tt")
+            .style("opacity", 0);
+    createGradient(svg,'#fff','#CBFFDA','line111');
+    createGradient(svg,'#fff','#FFDCD4','line211');
+    createGradient(svg,'#fff','#C7D1FF','line311');
+    plotLine(data,NHem,"line3",'dot3','NHem');
+    plotLine(data,SHem,"line2",'dot2','SHem');
+    plotLine(data,Glob,"line1",'dot1','Glob');
+    var color = d3.scale.ordinal()
+            .range(['orange','purple','green']);
+
+   //adding legend for each region
+   var legendRectSize=10;
+    var legendSpacing=7;
+    var legendHeight=legendRectSize+legendSpacing;
+    var legend=svg.selectAll('.legend')
+            .data(["Global Mean","Northern Hemisphere","Southern Hemisphere"])
+            .enter()
+            .append('g')
+            .attr({
+                class:'legend',
+                transform:function(d,i){
+                    //Just a calculation for x & y position
+                    return 'translate('+((i*200)+20)+',' + -30 + ')';
+                }
+            });
+    legend.append('rect')
+            .attr({
+                width:legendRectSize,
+                height:legendRectSize,
+                rx:10,
+                ry:10
+            })
+            .style({
+                fill:color,
+                stroke:color
+            });
+    legend.append('text')
+            .attr({
+                x:15,
+                y:9
+            })
+            .text(function(d){
+                return d;
+            }).style({
+        fill:'#000000',
+        'font-size':'12px'
+    });
+
+</script>
+
+<div class="annotation">
+    <center><h3>Figure 5. Annual Mean Temperature Anomalies(°C) for Global, Northern and Southern Hemispheres from 1880 to 2016</h3></center>
+</div>
+
+<div class="footer">
+	<hr noshade size=1 width=75 align="left">
+	<p>Code sources:</p>
+		<li>The code was modified based on the following link at <a href="https://github.com/adeveloperdiary/Visualization/blob/gh-pages/Week2/index.html">github_blog_link</a></li>
+	<p>Data sources:</p>
+		<li>GISTEMP Team, 2017: GISS Surface Temperature Analysis (GISTEMP). NASA Goddard Institute for Space Studies. Dataset accessed 2017-10-22 at <a href="http://data.giss.nasa.gov/gistemp/">GISTEMP</a></li>
+	<p>Reference:</p>
+		<li>Hansen, J., R. Ruedy, M. Sato, and K. Lo, 2010: <a href="http://pubs.giss.nasa.gov/abs/ha00510u.html">Global surface temperature change</a>, Rev. Geophys., 48, RG4004, doi:10.1029/2010RG000345.</li>
+</div>
+
+</body>
+</html>
+
+

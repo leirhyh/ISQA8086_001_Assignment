@@ -1,0 +1,399 @@
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v0.3.min.js"></script>
+    <script src="d3-spiral-heatmap.js"></script>
+  <link href="style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Catamaran" rel="stylesheet">
+
+
+</head>
+
+<body>
+  <div id="explain"><h1>World average monthly temperatures from 1880 to 2017</h1>
+  <svg id="slider" width="800" height="50"></svg>
+  <div id="legend"></div>
+    <div id="chart"></div>
+
+    <script>
+        //SVG dimensions
+        const radians = 0.0174532925
+        const chartWidth = 750
+        const chartHeight = chartWidth
+        const chartRadius = chartWidth / 2
+        const margin = { "top": 40, "bottom": 40, "left": 40, "right": 40 }
+
+        var animated = true;
+
+        let dateParse = d3.timeParse("%d/%m/%Y")
+        let dateFormat = d3.timeFormat("%d%m");// returns date string ddmm, eg 2902
+        let dayOfYear = d3.timeFormat("%j");
+
+        let startAngle = 0;
+
+        let arcLabels = [
+            { "month": "Jan", "start": 0, "days": 1 },
+            { "month": "Feb", "start": 1, "days": 1 },
+            { "month": "Mar", "start": 2, "days": 1 },
+            { "month": "Apr", "start": 3, "days": 1 },
+            { "month": "May", "start": 4, "days": 1 },
+            { "month": "Jun", "start": 5, "days": 1 },
+            { "month": "Jul", "start": 6, "days": 1 },
+            { "month": "Aug", "start": 7, "days": 1 },
+            { "month": "Sep", "start": 8, "days": 1 },
+            { "month": "Oct", "start": 9, "days": 1 },
+            { "month": "Nov", "start": 10, "days": 1 },
+            { "month": "Dec", "start": 11, "days": 1 }
+        ]
+
+        var chartData;
+      var chart
+			var yearLabel;
+
+        //Colour scale
+        var colour = d3.scaleSequential(d3.interpolateRdYlBu);
+
+        //Load the data, nest, sort and draw charts
+        d3.csv("temperaturenew.csv", convertTextToNumbers, function (error, data) {
+            if (error) { throw error; };
+
+            colour.domain(d3.extent(data, function (d) { return d.temperature; }).reverse());
+
+            chartData = createDataPerDay(data);
+
+            startAngle = (((data[0].month - 1) / 12)  * 360);
+
+            //set the options for the spiral heatmap
+            let heatmap = spiralHeatmap()
+                .radius(chartRadius)
+                .holeRadiusProportion(0.1)
+                .arcsPerCoil(12)
+                .startAngle(startAngle)
+                .coilPadding(0.1)
+            //.coilLabel("year")
+
+            //CREATE SVG AND A G PLACED IN THE CENTRE OF THE SVG
+            const div = d3.select("#chart").append("div")
+
+            const svg = div.append("svg")
+                .attr("width", chartWidth + margin.left + margin.right)
+                .attr("height", chartHeight + margin.top + margin.bottom);
+
+            const g = svg.append("g")
+                .attr("transform", "translate("
+                + (margin.left + chartRadius)
+                + ","
+                + (margin.top + chartRadius) + ")");
+
+            g.datum(chartData)
+                .call(heatmap);
+
+          chart = g.selectAll(".arc")
+            arcs = chart.selectAll("path")
+                .style("fill", function (d, i) {
+                  return colour(d.temperature);
+                })
+            		.style("opacity", "0")
+
+
+
+            d3.selectAll(".arc-label").remove();
+
+            var arcLabelsG = g.selectAll('.arc-label')
+                .data(arcLabels)
+                .enter()
+                .append('g')
+                .attr('class', 'arc-label')
+
+            let dayAngle = 360 / 12;
+
+            arcLabelsG
+                .append('text')
+                .text(function (d) {
+                    return d.month
+                })
+                .attr('x', function (d) {
+                    let monthAngle = 360 * (d.days / 365);
+                    let labelAngle = (d.start * dayAngle) + (30 / 2)
+                    let labelRadius = chartRadius + 20;
+                    return labelX(labelAngle, labelRadius)
+                })
+                .attr('y', function (d) {
+                    let monthAngle = 360 * (d.days / 365);
+                    let labelAngle = (d.start * dayAngle) + (30 / 2)
+                    let labelRadius = chartRadius + 20;
+                    return labelY(labelAngle, labelRadius)
+                })
+                .style('text-anchor', function (d, i) {
+                    return i < arcLabels.length / 2 ? 'start' : 'end'
+                })
+
+            arcLabelsG
+                .append('line')
+            		.attr("class", "arcLabelLine")
+                .attr('x2', function (d, i) {
+                    let lineAngle = d.start * dayAngle
+                    let lineRadius = chartRadius + 40
+                    return labelX(lineAngle, lineRadius)
+                })
+                .attr('y2', function (d, i) {
+                    let lineAngle =  d.start * dayAngle
+                    let lineRadius = chartRadius + 40
+                    return labelY(lineAngle, lineRadius)
+                })
+
+            yearLabel = g.append("text")
+            	.text(chartData[0].date.getFullYear())
+            	.style("text-anchor", "middle")
+            	.attr("dy", 5)
+
+          	let delayIndex = 0;
+          	let delayStagger = 10;
+
+          	/*arcs.transition()
+            	.duration(200)
+            	.delay(function(d, i){
+                delayIndex = delayIndex + 1;
+              	return delayIndex * delayStagger;
+            	})
+            	.style("opacity", 1)
+            	.on("start", function(d, i){
+              	yearLabel.text(d.year);
+            	})*/
+
+
+            //DRAW LEGEND
+
+            const legendWidth = 715;
+            const legendHeight = 20;
+            const legendPadding = 40;
+
+            const units = "°C"
+
+            var legendSVG = d3.select("#legend")
+                .append("svg")
+                .attr("width", legendWidth + legendPadding + legendPadding)
+                .attr("height", legendHeight + legendPadding + legendPadding);
+
+            var defs = legendSVG.append("defs");
+
+            var legendGradient = defs.append("linearGradient")
+                .attr("id", "linear-gradient")
+                .attr("x1", "100%")
+                .attr("y1", "0%")
+                .attr("x2", "0%")
+                .attr("y2", "0%");
+
+            let noOfSamples = 20;
+            let dataRange = colour.domain()[1] - colour.domain()[0];
+            let stepSize = dataRange / noOfSamples;
+
+            for (i = 0; i < noOfSamples; i++) {
+                legendGradient.append("stop")
+                    .attr("offset", (i / (noOfSamples - 1)))
+                    .attr("stop-color", colour(colour.domain()[0] + (i * stepSize)));
+            }
+
+            var legendG = legendSVG.append("g")
+                .attr("class", "legendLinear")
+                .attr("transform", "translate(" + legendPadding + "," + legendPadding + ")");
+
+            legendG.append("rect")
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("width", legendWidth)
+                .attr("height", legendHeight)
+                .style("fill", "url(#linear-gradient)");
+
+            legendG.append("text")
+                .text("Low (" + colour.domain()[1] + " " + units + ")")
+                .attr("x", 0)
+                .attr("y", legendHeight - 35)
+                .style("font-size", "12px");
+
+            legendG.append("text")
+                .text("High (" + colour.domain()[0] + " " + units + ")")
+                .attr("x", legendWidth)
+                .attr("y", legendHeight - 35)
+                .style("text-anchor", "end")
+                .style("font-size", "12px");
+
+
+        });
+
+
+        //Returns a new array, which a data point per day, except for 29th Feb.
+        //Where a day is missing in the original data, use the preceding day.
+        function createDataPerDay(data) {
+
+            let day = data[0].date;
+            let lastDay = data[data.length - 1].date;
+            let newData = []
+
+            let i = 0;
+
+            for (day; day <= lastDay; day.setMonth(day.getMonth() + 1)) {
+
+              let datum = {};
+              datum.date = new Date(day);
+              let compareDate = new Date(data[i].date);
+
+              if (compareDate.getTime() === day.getTime()) {
+
+                datum.temperature = data[i].temperature * 2;
+                datum.source = "original";
+                datum.year = datum.date.getFullYear();
+                datum.month = datum.date.getMonth();
+                datum.day = datum.date.getDate();
+                datum.dayOfYear = +dayOfYear(datum.date);
+                i = i+1;
+
+              } else {
+                datum.temperature = data[i - 1].temperature * 2;
+                datum.source = "avg";
+                datum.year = datum.date.getFullYear();
+                datum.month = datum.date.getMonth();
+                datum.day = datum.date.getDate();
+                datum.dayOfYear = +dayOfYear(datum.date);
+              };
+
+              newData.push(datum);
+
+            }
+
+            return newData;
+
+        };
+
+        function labelX(angle, radius) {
+            // change to clockwise
+            let a = 360 - angle
+            // start from 12 o'clock
+            a = a + 180;
+            return radius * Math.sin(a * radians)
+        }
+
+        function labelY(angle, radius) {
+            // change to clockwise
+            let a = 360 - angle
+            // start from 12 o'clock
+            a = a + 180;
+            return radius * Math.cos(a * radians)
+        }
+
+        function convertTextToNumbers(d) {
+            let dateString = d.day + "/" + d.month + "/" + d.year
+            d.date = dateParse(dateString);
+            d.temperature = +d.temperature;
+            d.year = +d.year;
+            d.month = +d.month;
+            d.day = +d.day;
+            d.dayOfYear = +dayOfYear(d.date);
+            return d;
+        };
+
+      var svg = d3.select("#slider"),
+    marg = {right: 50, left: 50},
+    width = +svg.attr("width") - marg.left - marg.right,
+    height = +svg.attr("height");
+
+var handle;
+var playPauseButton = svg.append("svg:image")
+       .attr('x',0)
+       .attr('y',10)
+       .attr('width', 32)
+       .attr('height', 32)
+       .attr("xlink:href","http://i.imgur.com/GQYRQQv.png")
+      .on("click",  playPause);
+
+var x = d3.scaleTime()
+    .domain([new Date(1880, 0, 1), new Date(2017, 0, 1)])
+    .range([0, width])
+    .clamp(true);
+var slider = svg.append("g")
+    .attr("class", "slider")
+    .attr("transform", "translate(" + marg.left + "," + height / 2 + ")");
+slider.append("line")
+    .attr("class", "track")
+    .attr("x1", x.range()[0])
+    .attr("x2", x.range()[1])
+  .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    .attr("class", "track-inset")
+  .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    .attr("class", "track-overlay")
+    .call(d3.drag()
+        .on("start.interrupt", function() { slider.interrupt(); })
+        .on("start drag", function() {
+  if (animated) playPause()
+  handle.transition()
+    .ease(d3.easeCubic)
+    .duration(2 * Math.abs(d3.event.x - handle.attr("cx")))
+  	.attr("cx", Math.min(width, Math.max(0, d3.event.x)))
+    .tween("attr.fill", function() {
+        var node = this;
+        return function(t) {
+          hue(x.invert(node.getAttribute("cx")));
+        }
+      });
+}));
+slider.insert("g", ".track-overlay")
+    .attr("class", "ticks")
+    .attr("transform", "translate(0," + 18 + ")")
+  .selectAll("text")
+  .data(x.ticks(10))
+  .enter().append("text")
+    .attr("x", x)
+    .attr("text-anchor", "middle")
+    .text(function(d) { return d.getFullYear(); });
+handle = slider.insert("circle", ".track-overlay")
+    .attr("class", "handle")
+    .attr("r", 9)
+		.attr("cx", 0);
+
+      d3.interval(function(elapsed) {
+      if (animated) {
+        console.log(handle.attr("cx"))
+        handle.attr("cx", Math.min(+handle.attr("cx")+1, width));
+        hue(x.invert(handle.attr("cx")));
+      }
+     }, 30);
+
+      function playPause() {
+        animated = !animated;
+        playPauseButton.attr("xlink:href",animated ? "http://i.imgur.com/GQYRQQv.png" : "http://i.imgur.com/twrr0MN.png");
+        //d3.event.stopPropagation();
+      }
+
+function hue(h) {
+  let year = h.getFullYear();
+  let month = h.getMonth();
+  searchLoop:
+  for (index = 0; index < chartData.length; index++) {
+    if (year == chartData[index].year) {
+      if (month == chartData[index].month) {
+        chart.selectAll("path").filter(function(d) { return +this.id <= index }).style("opacity", "1");
+        chart.selectAll("path").filter(function(d) { return +this.id > index }).style("opacity", "0");
+        break searchLoop;
+      }
+    } else {
+      index += 11;
+    }
+    yearLabel.text(year);
+  }
+}
+    </script>
+ <div class="annotation">
+     <h3>Figure 4. Global surface monthly means temperature anomalies(°C) from 1880 to 2016</h3>
+ </div>
+
+ <div class="footer">
+ 	<hr noshade size=1 width=75 align="left">
+ 	<p>Code sources:</p>
+ 		<li>The code was modified based on the following link at <a href="http://blockbuilder.org/pmariac/9f350f74ae2e7dcbc8c02e940a5777dc">web_link</a></li>
+ 	<p>Data sources:</p>
+ 		<li>GISTEMP Team, 2017: GISS Surface Temperature Analysis (GISTEMP). NASA Goddard Institute for Space Studies. Dataset accessed 2017-10-22 at <a href="http://data.giss.nasa.gov/gistemp/">GISTEMP</a></li>
+ 	<p>Reference:</p>
+ 		<li>Hansen, J., R. Ruedy, M. Sato, and K. Lo, 2010: <a href="http://pubs.giss.nasa.gov/abs/ha00510u.html">Global surface temperature change</a>, Rev. Geophys., 48, RG4004, doi:10.1029/2010RG000345.</li>
+ </div>
+
+</body>

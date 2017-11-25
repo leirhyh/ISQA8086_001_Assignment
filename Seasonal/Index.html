@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
+    <!--<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>-->
+</head>
+<body>
+<div class="chart-wrapper" id="chart-line1"></div>
+
+<script type="text/javascript">
+    d3.csv('Seasonal.csv', function(error, data) {
+    data.forEach(function (d) {
+        d.Year = +d.Year;
+        d.Winter = +d.Winter;
+        d.Spring = +d.Spring;
+        d.Summer = +d.Summer;
+        d.Fall = +d.Fall;
+    });
+
+    var chart = makeLineChart(data, 'Year', {
+        'Winter': {column: 'Winter'},
+        'Spring': {column: 'Spring'},
+        'Summer': {column: 'Summer'},
+        'Fall': {column: 'Fall'}
+    }, {xAxis: 'Years', yAxis: 'Temperature Anomalies °C'});
+    chart.bind("#chart-line1");
+    chart.render();
+});
+</script>
+<script src="seasonal.js" charset="utf-8"></script>
+
+
+<div class="annotation">
+    <center><h3>Figure 3. Seasonal Mean Temperature Anomalies(°C)from 1880 to 2016</h3></center>
+</div>
+
+<div class="footer">
+	<hr noshade size=1 width=75 align="left">
+	<p>Code sources:</p>
+		<li>The code was modified based on the following link at <a href="http://bl.ocks.org/asielen/44ffca2877d0132572cb">Reusable Responsive mulitline Chart</a></li>
+	<p>Data sources:</p>
+		<li>GISTEMP Team, 2017: GISS Surface Temperature Analysis (GISTEMP). NASA Goddard Institute for Space Studies. Dataset accessed 2017-10-22 at <a href="http://data.giss.nasa.gov/gistemp/">GISTEMP</a></li>
+	<p>Reference:</p>
+		<li>Hansen, J., R. Ruedy, M. Sato, and K. Lo, 2010: <a href="http://pubs.giss.nasa.gov/abs/ha00510u.html">Global surface temperature change</a>, Rev. Geophys., 48, RG4004, doi:10.1029/2010RG000345.</li>
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,52 @@
+.ticks {
+  font: 10px sans-serif;
+}
+.track,
+.track-inset,
+.track-overlay {
+  stroke-linecap: round;
+}
+.track {
+  stroke: #000;
+  stroke-opacity: 0.3;
+  stroke-width: 10px;
+}
+.track-inset {
+  stroke: #ddd;
+  stroke-width: 8px;
+}
+.track-overlay {
+  pointer-events: stroke;
+  stroke-width: 50px;
+  cursor: ew-resize;
+}
+.handle {
+  fill: #fff;
+  stroke: #000;
+  stroke-opacity: 0.5;
+  stroke-width: 1.25px;
+}
+
+ body {
+            font-family: 'Catamaran', sans-serif;
+            margin: 20px;
+            top: 20px;
+            right: 20px;
+            bottom: 20px;
+            left: 20px;
+        }
+
+        .arcLabelLine {
+            stroke: #E9E9E9;
+        }
+
+        .coil-label {
+            fill: #000;
+            font-size: 12px;
+        }
+    body {
+    
+    width: 100%;
+    font-family: 'Roboto', sans-serif;
+    height: 100%;
+}  
